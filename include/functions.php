@@ -214,7 +214,10 @@ function userlogin($lightmode = false) {
 	unset($GLOBALS["CURUSER"]);
 
 	if (COOKIE_SALT == '' || (COOKIE_SALT == 'default' && $_SERVER['SERVER_ADDR'] != '127.0.0.1' && $_SERVER['SERVER_ADDR'] != $_SERVER['REMOTE_ADDR']))
-		die('Скрипт заблокирован! Измените значение переменной COOKIE_SALT в файле include/init.php на случайное');
+		die('Скрипт заблокирован! Измените значение константы COOKIE_SALT в файле include/init.php на случайное');
+
+	if (COOKIE_SALT == 'COOKIE_SALT')
+		die('Идите и учите <a href="http://www.php.net">PHP</a>"... Сказано было ИЗМЕНИТЬ значение, а не удалить константу!');
 
 	$ip = getip();
 	$nip = ip2long($ip);
@@ -660,7 +663,7 @@ function parsedescr($d, $html) {
 }
 
 function stdhead($title = "", $msgalert = true) {
-	global $CURUSER, $SITE_ONLINE, $FUNDS, $SITENAME, $DEFAULTBASEURL, $ss_uri, $tracker_lang, $default_theme, $keywords, $description;
+	global $CURUSER, $SITE_ONLINE, $FUNDS, $SITENAME, $DEFAULTBASEURL, $ss_uri, $tracker_lang, $default_theme, $keywords, $description, $pic_base_url;
 
 	if (!$SITE_ONLINE)
 		die('Site is down for maintenance, please check back again later... thanks<br />');
@@ -766,9 +769,8 @@ function loggedinorreturn($nowarn = false) {
 function deletetorrent($id) {
 	global $torrent_dir;
 	$images = mysql_fetch_array(sql_query('SELECT image1, image2, image3, image4, image5 FROM torrents WHERE id = '.$id));
-	if ($images) {
-		for ($x=1; $x <= 5; $x++) {
-			if ($images['image' . $x] != '')
+	if ($images) { for ($x=1; $x <= 5; $x++) {
+			if ($images['image' . $x] != '' && file_exists('torrents/images/' . $images['image' . $x]))
 				unlink('torrents/images/' . $images['image' . $x]);
 		}
 	}
@@ -779,6 +781,7 @@ function deletetorrent($id) {
 	foreach(explode('.','peers.files.comments.ratings') as $x)
 		sql_query('DELETE FROM '.$x.' WHERE torrent = '.$id);
 	sql_query('DELETE FROM torrents_scrape WHERE tid = '.$id);
+	sql_query('DELETE FROM torrents_descr WHERE tid = '.$id);
 	unlink($torrent_dir.'/'.$id.'.torrent');
 }
 
@@ -964,9 +967,14 @@ function parked() {
 		  stderr($tracker_lang['error'], 'Ваш аккаунт припаркован.');
 }
 
+function magnet($html = true, $info_hash, $name, $size, $announces = array()) {
+	$ampersand = $html ? '&amp;' : '&';
+	return sprintf('magnet:?xt=urn:btih:%2$s%1$sdn=%3$s%1$sxl=%4$d%1$str=%5$s', $ampersand, $info_hash, urlencode($name), $size, implode($ampersand . 'tr=', $announces));
+}
+
 // В этой строке забит копирайт. При его убирании можешь поплатиться рабочим трекером ;) В данном случае - убирая строчки ниже ты не сможешь использовать трекер.
 define ('VERSION', '');
-define ('NUM_VERSION', '2.1.16');
+define ('NUM_VERSION', '2.1.17');
 define ('TBVERSION', 'Powered by <a href="http://www.tbdev.net" target="_blank" style="cursor: help;" title="Бесплатная OpenSource база" class="copyright">TBDev</a> v'.NUM_VERSION.' <a href="http://bit-torrent.kiev.ua" target="_blank" style="cursor: help;" title="Сайт разработчика движка" class="copyright">Yuna Scatari Edition</a> '.VERSION.' Copyright &copy; 2001-'.date('Y'));
 
 function mysql_modified_rows () {
